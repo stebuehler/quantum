@@ -11,5 +11,7 @@ indices_v_x = get_indices_for_v_rel([0.75, 0.5, 0.25], df)
 times_to_v_x = [df.loc[index].time - df.iloc[0].time for index in indices_v_x]
 index_a_max = get_index_for_a_max(df)
 time_to_a_max = df.loc[index_a_max].time - df.iloc[0].time
+time_total = df.iloc[-1].time - df.iloc[0].time
 print(time_to_a_max)
 print(times_to_v_x)
+print(time_total)
