@@ -3,10 +3,7 @@ import datetime
 import io
 
 import dash
-from dash.dependencies import Input, Output, State
-import dash_core_components as dcc
-import dash_html_components as html
-import dash_table
+from dash import Input, Output, html, dcc, dash_table
 import plotly.express as px
 
 import pandas as pd
@@ -44,41 +41,41 @@ app.layout = html.Div([ # this code section taken from Dash docs https://dash.pl
 ])
 
 
-def parse_contents(contents, filename):
-    content_type, content_string = contents.split(',')
+def parse_contents(contents_list):
+    full_df = pd.DataFrame()
+    for contents in contents_list:
+        content_type, content_string = contents.split(',')
 
-    decoded = base64.b64decode(content_string)
-    try:
-        df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), delimiter=";")
-        df_result = process_single_file(df)
-    except Exception as e:
-        print(e)
-        return html.Div([
-            'There was an error processing this file.'
-        ])
+        decoded = base64.b64decode(content_string)
+        try:
+            df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), delimiter=";")
+            df_result = process_single_file(df)
+            full_df = pd.concat([full_df, df_result])
+        except Exception as e:
+            print(e)
+            return html.Div([
+                'There was an error processing this file.'
+            ])
 
     return html.Div([
-        html.H5(filename),
         html.Hr(),
 
         dash_table.DataTable(
-            data=df_result.to_dict('records'),
-            columns=[{'name': i, 'id': i} for i in df_result.columns],
-            page_size=100
+            data=full_df.to_dict('records'),
+            columns=[{'name': i, 'id': i} for i in full_df.columns],
+            page_size=20,
+            export_format="xlsx"
         ),
-        dcc.Store(id='stored-data', data=df_result.to_dict('records')),
+        dcc.Store(id='stored-data', data=full_df.to_dict('records')),
     ])
 
 
 @app.callback(Output('output-datatable', 'children'),
               Input('upload-data', 'contents'),
-              State('upload-data', 'filename'),
 )
-def update_output(list_of_contents, list_of_names):
+def update_output(list_of_contents):
     if list_of_contents is not None:
-        children = [
-            parse_contents(c, n) for c, n in
-            zip(list_of_contents, list_of_names)]
+        children = [parse_contents(list_of_contents)]
         return children
 
 
