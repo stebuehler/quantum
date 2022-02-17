@@ -1,1 +1,1 @@
-web: gunicorn dash_multitab:server
+web: gunicorn web_app:server
