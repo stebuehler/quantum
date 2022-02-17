@@ -38,13 +38,13 @@ def get_all_entries_for_column(column, df):
 
 def add_result_values(df, t_total, t_v_x_list, t_a_max):
     df['total deceleration time (v_max to v=0)'] = t_total
-    df['time to v_25 (abs)'] = t_v_x_list[0]
-    df['time to v_25 (rel)'] = t_v_x_list[0] / t_total
+    df['time to v_75 (abs)'] = t_v_x_list[0]
     df['time to v_50 (abs)'] = t_v_x_list[1]
-    df['time to v_50 (rel)'] = t_v_x_list[1] / t_total
-    df['time to v_75 (abs)'] = t_v_x_list[2]
-    df['time to v_75 (rel)'] = t_v_x_list[2] / t_total
+    df['time to v_25 (abs)'] = t_v_x_list[2]
     df['time to a_max (abs)'] = t_a_max
+    df['time to v_75 (rel)'] = t_v_x_list[0] / t_total
+    df['time to v_50 (rel)'] = t_v_x_list[1] / t_total
+    df['time to v_25 (rel)'] = t_v_x_list[2] / t_total
     df['time to a_max (rel)'] = t_a_max / t_total
     return df
 
