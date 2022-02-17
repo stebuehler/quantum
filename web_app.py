@@ -65,7 +65,10 @@ def parse_contents(contents_list):
             data=full_df.to_dict('records'),
             columns=[{'name': i, 'id': i} for i in full_df.columns],
             page_size=20,
-            export_format="xlsx"
+            export_format="xlsx",
+            style_data={'whiteSpace': 'normal','height': 'auto'},
+            style_cell={'maxWidth': '100px'},
+            style_header= {'whiteSpace': 'normal'},
         ),
         dcc.Store(id='stored-data', data=full_df.to_dict('records')),
     ])
