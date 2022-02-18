@@ -23,13 +23,14 @@ def add_aux_columns(df):
     df['v_rel'] = df['Speed [m/s]']/df['Speed [m/s]'].min()
     df['time'] = df['Sample duration [s]'].cumsum()
     df['rate_of_force_development'] = df['Force [N]'].diff() / df['Sample duration [s]']
+    df['unique_key'] = df['Session Date & Time [ISO 8601]'] + df['Repetition # (per Set)'].astype('str')
     return df
 
 def get_index_for_max(df, column_name):
     return df[column_name].idxmax()
 
 def drop_numerical_columns_and_return_one_row(df):
-    numerical_columns = ['Position [m]', 'Speed [m/s]', 'Acceleration [m/(s^2)]', 'Force [N]', 'Sample duration [s]', 'time', 'v_rel', '#Row', 'rate_of_force_development']
+    numerical_columns = ['Position [m]', 'Speed [m/s]', 'Acceleration [m/(s^2)]', 'Force [N]', 'Sample duration [s]', 'time', 'v_rel', '#Row', 'rate_of_force_development', 'unique_key']
     return df.drop(columns=numerical_columns).iloc[:1].reset_index(drop=True)
 
 def get_all_entries_for_column(column, df):
@@ -74,4 +75,14 @@ def process_single_file(full_df):
         df_result = drop_numerical_columns_and_return_one_row(df)
         df_result = add_result_values(df_result, time_total, times_to_v_x, time_to_a_max, time_to_rofd_max, rofd_max, peak_force / time_total)
         result_df = pd.concat([result_df, df_result])
+    return result_df
+
+def filter_single_file(full_df):
+    all_repetitons = get_all_entries_for_column('Repetition # (per Set)', full_df)
+    result_df = pd.DataFrame()
+    for repetition in all_repetitons:
+        df = filter_for_eccentric_motion_only(full_df)
+        df = filter_df_for_repetition(repetition, df)
+        df = add_aux_columns(df)
+        result_df = pd.concat([result_df, df])
     return result_df
