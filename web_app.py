@@ -15,9 +15,12 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets,
                 suppress_callback_exceptions=True)
 server = app.server
-app.title = "Quantum filecruncher"
+app.title = "Quantum dropjump filecruncher"
 
 app.layout = html.Div([ # this code section taken from Dash docs https://dash.plotly.com/dash-core-components/upload
+    html.P('1) Eins oder mehrere .csv files (quantum Rohdaten) hochladen'),
+    html.P('2) Via \'Export\' Button oben an der Tabelle die berechneten Messgrössen exportieren'),
+    html.P('Anmerkung: Nur Exzentrik, nur Teil der Bewegung nach Landung (v_max) wird benutzt.'),
     dcc.Upload(
         id='upload-data',
         children=html.Div([
@@ -34,7 +37,6 @@ app.layout = html.Div([ # this code section taken from Dash docs https://dash.pl
             'textAlign': 'center',
             'margin': '10px'
         },
-        # Allow multiple files to be uploaded
         multiple=True
     ),
     html.Div(id='output-div'),
