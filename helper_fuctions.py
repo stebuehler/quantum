@@ -38,7 +38,7 @@ def get_all_entries_for_column(column, df):
     entries.sort()
     return entries
 
-def add_result_values(df, t_total, t_v_x_list, t_a_max, t_rofd_max, rofd_max, rofd_avg):
+def add_result_values(df, t_total, t_v_x_list, t_a_max, t_rofd_max, rofd_max, rofd_avg, distance_of_eccentric_motion):
     df['total deceleration time (v_max to v=0)'] = t_total
     df['time to v_75 (abs)'] = t_v_x_list[0]
     df['time to v_50 (abs)'] = t_v_x_list[1]
@@ -52,6 +52,7 @@ def add_result_values(df, t_total, t_v_x_list, t_a_max, t_rofd_max, rofd_max, ro
     df['time to peak rate of force development (rel)'] = t_rofd_max / t_total
     df['peak rate of force development'] = rofd_max
     df['avg rate of force development'] = rofd_avg
+    df['distance of eccentric motion'] = distance_of_eccentric_motion
     return df
 
 def process_single_file(full_df):
@@ -72,8 +73,9 @@ def process_single_file(full_df):
         time_to_a_max = df.loc[index_a_max].time - df.iloc[0].time
         time_to_rofd_max = df.loc[index_rofd_max].time - df.iloc[0].time
         time_total = df.iloc[-1].time - df.iloc[0].time
+        distance_of_eccentric_motion = df['Position [m]'].max() - df['Position [m]'].min()
         df_result = drop_numerical_columns_and_return_one_row(df)
-        df_result = add_result_values(df_result, time_total, times_to_v_x, time_to_a_max, time_to_rofd_max, rofd_max, peak_force / time_total)
+        df_result = add_result_values(df_result, time_total, times_to_v_x, time_to_a_max, time_to_rofd_max, rofd_max, peak_force / time_total, distance_of_eccentric_motion)
         result_df = pd.concat([result_df, df_result])
     return result_df
 
