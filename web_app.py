@@ -20,8 +20,8 @@ app.title = "Quantum dropjump filecruncher"
 app.layout = html.Div([ # this code section taken from Dash docs https://dash.plotly.com/dash-core-components/upload
     html.P('1) Eins oder mehrere .csv files (quantum Rohdaten) hochladen'),
     html.P('2) Via \'Export\' Button oben an der Tabelle die berechneten Messgrössen exportieren'),
-    html.P('Anmerkungen: Nur Exzentrik, nur Teil der Bewegung nach Landung (v_max) wird benutzt.'),
-    html.P('Graph nur zu illustrativen Zwecken.'),
+    html.P('Anmerkungen: Nur Exzentrik, nur Teil der Bewegung nach Landung (v_max) wird benutzt. Ausser für \'max speed of concentric motion\''),
+    # html.P('Graph nur zu illustrativen Zwecken.'),
     dcc.Upload(
         id='upload-data',
         children=html.Div([
@@ -40,7 +40,7 @@ app.layout = html.Div([ # this code section taken from Dash docs https://dash.pl
         },
         multiple=True
     ),
-    html.Div(id='graph-div'),
+    # html.Div(id='graph-div'),
     html.Div(id='output-datatable'),
 ])
 
@@ -103,14 +103,14 @@ def update_output(list_of_contents):
         children = [parse_contents(list_of_contents)]
         return children
 
-@app.callback(Output('graph-div', 'children'),
-              Input('upload-data', 'contents'),
-)
-def update_graph(list_of_contents):
-    if list_of_contents is not None:
-        full_df = parse_full_df(list_of_contents)
-        fig = create_graph(full_df)
-        return fig
+# @app.callback(Output('graph-div', 'children'),
+#               Input('upload-data', 'contents'),
+# )
+# def update_graph(list_of_contents):
+#     if list_of_contents is not None:
+#         full_df = parse_full_df(list_of_contents)
+#         fig = create_graph(full_df)
+#         return fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)
