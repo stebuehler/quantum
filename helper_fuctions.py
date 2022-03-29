@@ -38,7 +38,7 @@ def get_all_entries_for_column(column, df):
     entries.sort()
     return entries
 
-def add_result_values(df, t_total, t_v_x_list, v_v_x_list, a_v_x_list, f_v_x_list, t_a_max, t_rofd_max, rofd_max, rofd_avg, distance_of_eccentric_motion, v_max_concentric):
+def add_result_values(df, t_total, t_v_x_list, v_v_x_list, a_v_x_list, f_v_x_list, t_a_max, t_rofd_max, rofd_max, rofd_avg, distance_of_eccentric_motion, distance_of_eccentric_motion_post_landing, v_max_concentric):
     # t_v_x_list has three entries (75, 50, 25) because entry for 100 is 0 by default and entry for 0 is captured in t_total.
     # The other lists have five entries (100, 75, 50, 25, 0)
     df['total deceleration time (v_max to v=0)'] = t_total
@@ -78,6 +78,7 @@ def add_result_values(df, t_total, t_v_x_list, v_v_x_list, a_v_x_list, f_v_x_lis
     df['peak rate of force development'] = rofd_max
     df['avg rate of force development'] = rofd_avg
     df['distance of eccentric motion'] = distance_of_eccentric_motion
+    df['distance of eccentric motion (deceleration only)'] = distance_of_eccentric_motion_post_landing
     df['max speed of concentric motion'] = v_max_concentric
     return df
 
@@ -89,6 +90,7 @@ def process_single_file(full_df):
         df = filter_for_motion_type(full_df, 'Ecc. / Assist.')
         df = filter_df_for_repetition(repetition, df)
         df = add_aux_columns(df)
+        distance_of_eccentric_motion = df['Position [m]'].max() - df['Position [m]'].min()
         df = filter_df_for_landing_phase_only(df)
         indices_v_x = get_indices_for_v_rel([0.75, 0.5, 0.25], df)
         indices_v_x_incl_first_and_last = [df.index[0]] + indices_v_x + [df.index[-1]]
@@ -103,14 +105,14 @@ def process_single_file(full_df):
         time_to_a_max = df.loc[index_a_max].time - df.iloc[0].time
         time_to_rofd_max = df.loc[index_rofd_max].time - df.iloc[0].time
         time_total = df.iloc[-1].time - df.iloc[0].time
-        distance_of_eccentric_motion = df['Position [m]'].max() - df['Position [m]'].min()
+        distance_of_eccentric_motion_post_landing = df['Position [m]'].max() - df['Position [m]'].min()
         # one KPI from concentric motion
         df_con = filter_for_motion_type(full_df, 'Con. / Resist.')
         df_con = filter_df_for_repetition(repetition, df_con)
         v_max_concentric = df_con['Speed [m/s]'].max()
         # print results into result df
         df_result = drop_numerical_columns_and_return_one_row(df)
-        df_result = add_result_values(df_result, time_total, times_to_v_x, v_at_v_x, a_at_v_x, f_at_v_x, time_to_a_max, time_to_rofd_max, rofd_max, peak_force / time_total, distance_of_eccentric_motion, v_max_concentric)
+        df_result = add_result_values(df_result, time_total, times_to_v_x, v_at_v_x, a_at_v_x, f_at_v_x, time_to_a_max, time_to_rofd_max, rofd_max, peak_force / time_total, distance_of_eccentric_motion, distance_of_eccentric_motion_post_landing, v_max_concentric)
         result_df = pd.concat([result_df, df_result])
     return result_df
 
