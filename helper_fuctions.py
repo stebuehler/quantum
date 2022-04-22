@@ -1,4 +1,6 @@
 import pandas as pd
+import numpy as np
+from scipy.signal import argrelextrema
 
 def filter_df_for_repetition(repetition_number, df):
     df_filtered = df.loc[df['Repetition # (per Set)'] == repetition_number]
@@ -19,11 +21,14 @@ def get_indices_for_v_rel(fraction_list, df):
     indices = [get_index_for_v_rel(fraction, df) for fraction in fraction_list]
     return indices
 
-def add_aux_columns(df):
+def add_aux_columns(df, manual_motion_type=False):
     df['v_rel'] = df['Speed [m/s]']/df['Speed [m/s]'].min()
     df['time'] = df['Sample duration [s]'].cumsum()
     df['rate_of_force_development'] = df['Force [N]'].diff() / df['Sample duration [s]']
     df['unique_key'] = df['Session Date & Time [ISO 8601]'] + df['Repetition # (per Set)'].astype('str')
+    if manual_motion_type:
+        df = df.drop(columns=['Motion type'])
+        df['Motion type'] = df['Speed [m/s]'].apply(lambda x: 'Ecc. / Assist.' if x < 0 else 'Con. / Resist.')
     return df
 
 def get_index_for_max(df, column_name):
@@ -82,6 +87,9 @@ def add_result_values(df, t_total, t_v_x_list, v_v_x_list, a_v_x_list, f_v_x_lis
     df['max speed of concentric motion'] = v_max_concentric
     return df
 
+def dj_add_result_values(df, t_total, t_v_x_list, v_v_x_list, a_v_x_list, f_v_x_list, t_a_max, t_rofd_max, rofd_max, rofd_avg, distance_of_eccentric_motion, distance_of_eccentric_motion_post_landing, v_max_concentric):
+    return df
+
 def process_single_file(full_df):
     # full_df = pd.read_csv(filepath, delimiter=";")
     all_repetitons = get_all_entries_for_column('Repetition # (per Set)', full_df)
@@ -112,7 +120,21 @@ def process_single_file(full_df):
         v_max_concentric = df_con['Speed [m/s]'].max()
         # print results into result df
         df_result = drop_numerical_columns_and_return_one_row(df)
-        df_result = add_result_values(df_result, time_total, times_to_v_x, v_at_v_x, a_at_v_x, f_at_v_x, time_to_a_max, time_to_rofd_max, rofd_max, peak_force / time_total, distance_of_eccentric_motion, distance_of_eccentric_motion_post_landing, v_max_concentric)
+        df_result = add_result_values(
+            df_result, 
+            time_total, 
+            times_to_v_x,
+            v_at_v_x,
+            a_at_v_x, 
+            f_at_v_x, 
+            time_to_a_max, 
+            time_to_rofd_max, 
+            rofd_max, 
+            peak_force / time_total, 
+            distance_of_eccentric_motion, 
+            distance_of_eccentric_motion_post_landing, 
+            v_max_concentric
+            )
         result_df = pd.concat([result_df, df_result])
     return result_df
 
@@ -124,4 +146,61 @@ def filter_single_file(full_df):
         df = filter_df_for_repetition(repetition, df)
         df = add_aux_columns(df)
         result_df = pd.concat([result_df, df])
+    return result_df
+
+def find_two_lowest_local_speed_minima(df):
+    indices_of_local_minima = argrelextrema(df['Speed [m/s]'].values, np.less_equal, order=20)[0]
+    list_of_speed_index_tuples = [(df.iloc[index]['Speed [m/s]'], index) for index in indices_of_local_minima]
+    sorted_list = sorted(list_of_speed_index_tuples)
+    print("found " + str(len(sorted_list)) + " local minima!")
+    return sorted_list[0][1], sorted_list[1][1]
+
+def process_single_file_double_jump(full_df):
+    all_repetitons = get_all_entries_for_column('Repetition # (per Set)', full_df)
+    result_df = pd.DataFrame()
+    for repetition in all_repetitons:
+        df_rep = filter_df_for_repetition(repetition, full_df)
+        df_rep = add_aux_columns(df_rep)
+        # eccentric part
+        df = filter_for_motion_type(df_rep, 'Ecc. / Assist.')
+        distance_of_eccentric_motion = df['Position [m]'].max() - df['Position [m]'].min()
+        index_vmax_1, index_vmax_2 = find_two_lowest_local_speed_minima(df)
+        df = filter_df_for_landing_phase_only(df)
+        indices_v_x = get_indices_for_v_rel([0.75, 0.5, 0.25], df)
+        indices_v_x_incl_first_and_last = [df.index[0]] + indices_v_x + [df.index[-1]]
+        times_to_v_x = [df.loc[index].time - df.iloc[0].time for index in indices_v_x]
+        v_at_v_x = [df['Speed [m/s]'].loc[index] for index in indices_v_x_incl_first_and_last]
+        a_at_v_x = [df['Acceleration [m/(s^2)]'].loc[index] for index in indices_v_x_incl_first_and_last]
+        f_at_v_x = [df['Force [N]'].loc[index] for index in indices_v_x_incl_first_and_last]
+        index_a_max = get_index_for_max(df, 'Acceleration [m/(s^2)]')
+        index_rofd_max = get_index_for_max(df, 'rate_of_force_development')
+        rofd_max = df.loc[index_rofd_max].rate_of_force_development
+        peak_force = df.loc[get_index_for_max(df, 'Force [N]')].at['Force [N]']
+        time_to_a_max = df.loc[index_a_max].time - df.iloc[0].time
+        time_to_rofd_max = df.loc[index_rofd_max].time - df.iloc[0].time
+        time_total = df.iloc[-1].time - df.iloc[0].time
+        distance_of_eccentric_motion_post_landing = df['Position [m]'].max() - df['Position [m]'].min()
+        # one KPI from concentric motion
+        df_con = filter_for_motion_type(df_rep, 'Con. / Resist.')
+        v_max_concentric = df_con['Speed [m/s]'].max()
+        v_max_concentric_index = df_con['Speed [m/s]'].idmax()
+        t_v_max_concentric = df_con['Speed [m/s]'].iloc[v_max_concentric_index]
+        # print results into result df
+        df_result = drop_numerical_columns_and_return_one_row(df)
+        df_result = dj_add_result_values(
+            df_result,
+            time_total,
+            times_to_v_x,
+            v_at_v_x,
+            a_at_v_x,
+            f_at_v_x,
+            time_to_a_max,
+            time_to_rofd_max,
+            rofd_max, peak_force / time_total,
+            distance_of_eccentric_motion,
+            distance_of_eccentric_motion_post_landing,
+            v_max_concentric, 
+            t_v_max_concentric
+            )
+        result_df = pd.concat([result_df, df_result])
     return result_df
