@@ -9,5 +9,5 @@ for rep in all_repetitons:
     df = filter_df_for_repetition(rep, full_df)
     df = add_aux_columns(df, manual_motion_type=True)
     df = filter_for_motion_type(df, 'Ecc. / Assist.')
-    (index1, index2) = find_two_lowest_local_speed_minima(df)
-    print(index1, index2)
+    (vmax_1_tuple, vmax_2_tuple) = find_two_lowest_local_speed_minima(df)
+    print(vmax_1_tuple, vmax_2_tuple)
