@@ -7,7 +7,7 @@ from dash import Input, Output, html, dcc, dash_table
 import plotly.express as px
 
 import pandas as pd
-from helper_fuctions import process_single_file, filter_single_file
+from helper_fuctions import process_single_file, filter_single_file, process_single_file_double_jump
 
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -15,13 +15,16 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets,
                 suppress_callback_exceptions=True)
 server = app.server
-app.title = "Quantum dropjump filecruncher"
+app.title = "Quantum filecruncher"
 
 app.layout = html.Div([ # this code section taken from Dash docs https://dash.plotly.com/dash-core-components/upload
-    html.P('1) Eins oder mehrere .csv files (quantum Rohdaten) hochladen'),
-    html.P('2) Via \'Export\' Button oben an der Tabelle die berechneten Messgrössen exportieren'),
-    html.P('Anmerkungen: Nur Exzentrik, nur Teil der Bewegung nach Landung (v_max) wird benutzt. Ausser für \'max speed of concentric motion\''),
-    # html.P('Graph nur zu illustrativen Zwecken.'),
+    html.P('1) Modus auswählen (Dropjump oder Double Hop)'),
+    html.P('2) Eins oder mehrere .csv files (quantum Rohdaten) hochladen'),
+    html.P('3) Via \'Export\' Button oben an der Tabelle die berechneten Messgrössen exportieren'),
+    html.P('Dropjump: Nur Exzentrik, nur Teil der Bewegung nach Landung (v_max) wird benutzt. Ausser für \'max speed of concentric motion\''),
+    html.P('Double Hop: Enthält die Messgrössen vom Dropjump für die Landung vom zweiten Hop (Umkehrbewegung), und zusätzlich Zeiten und Geschwindigkeiten vor und nach diesem'),
+    html.Img(src=app.get_asset_url('double_hop.png'), style={'height':'40%', 'width':'40%'}),
+    dcc.Dropdown(['Dropjump', 'Double Hop'], 'Double Hop', id='dropdown'),
     dcc.Upload(
         id='upload-data',
         children=html.Div([
@@ -45,15 +48,17 @@ app.layout = html.Div([ # this code section taken from Dash docs https://dash.pl
 ])
 
 
-def parse_contents(contents_list):
+def parse_contents(contents_list, mode):
     result_df = pd.DataFrame()
     for contents in contents_list:
         content_type, content_string = contents.split(',')
         decoded = base64.b64decode(content_string)
         try:
             df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), delimiter=";")
-            result_df = pd.concat([result_df, process_single_file(df)])
-            # result_df.append(process_single_file(df))
+            if mode == 'Dropjump':
+                result_df = pd.concat([result_df, process_single_file(df)])
+            elif mode == 'Double Hop':
+                result_df = pd.concat([result_df, process_single_file_double_jump(df)])
         except Exception as e:
             print(e)
             return html.Div([
@@ -97,10 +102,11 @@ def create_graph(df):
 
 @app.callback(Output('output-datatable', 'children'),
               Input('upload-data', 'contents'),
+              Input('dropdown', 'value'),
 )
-def update_output(list_of_contents):
+def update_output(list_of_contents, mode):
     if list_of_contents is not None:
-        children = [parse_contents(list_of_contents)]
+        children = [parse_contents(list_of_contents, mode)]
         return children
 
 # @app.callback(Output('graph-div', 'children'),

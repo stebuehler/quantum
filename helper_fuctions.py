@@ -35,7 +35,7 @@ def get_index_for_max(df, column_name):
     return df[column_name].idxmax()
 
 def drop_numerical_columns_and_return_one_row(df):
-    numerical_columns = ['Position [m]', 'Speed [m/s]', 'Acceleration [m/(s^2)]', 'Force [N]', 'Sample duration [s]', 'time', 'v_rel', '#Row', 'rate_of_force_development', 'unique_key']
+    numerical_columns = ['Position [m]', 'Speed [m/s]', 'Acceleration [m/(s^2)]', 'Force [N]', 'Sample duration [s]', 'time', 'v_rel', '#Row', 'rate_of_force_development', 'unique_key', 'Motion type']
     return df.drop(columns=numerical_columns).iloc[:1].reset_index(drop=True)
 
 def get_all_entries_for_column(column, df):
@@ -92,10 +92,16 @@ def dj_add_result_values(df, t_total, t_v_x_list, v_v_x_list, a_v_x_list, f_v_x_
     df['time to max speed of concentric motion'] = t_vmax_concentric
     df['vmax_1'] = vmax_1
     df['t_vmax_1'] = t_vmax_1
-    df['vmax_2'] = vmax_2
-    df['t_vmax_2'] = t_vmax_2
     df['vmin_1'] = vmin_1
     df['t_vmin_1'] = t_vmin_1
+    df['vmax_2 (=v_100)'] = vmax_2
+    df['t_vmax_2'] = t_vmax_2
+    df['vmin_2 (=v_0)'] = v_v_x_list[4]
+    df['t_vmin_2'] = t_total + t_vmax_2
+    df['delta t_vmax_1 to t_vmin_1 (abs)'] = t_vmin_1 - t_vmax_1
+    df['delta t_vmin_1 to t_vmax_2 (abs)'] = t_vmax_2 - t_vmin_1
+    df['delta t_vmax_2 to t_vmin2 (abs)'] = t_total
+    df['delta t_vmin_2 to t_vmax_concentric (abs)'] = t_vmax_concentric - t_total - t_vmax_2
     return df
 
 def process_single_file(full_df):
@@ -161,7 +167,10 @@ def find_two_lowest_local_speed_minima(df):
     list_of_speed_index_time_tuples = [(df.iloc[index]['Speed [m/s]'], index, df.iloc[index]['time']) for index in indices_of_local_minima]
     sorted_list = sorted(list_of_speed_index_time_tuples)  # sorts tuples by first argument
     # print("found " + str(len(sorted_list)) + " local minima!")
-    return sorted_list[0], sorted_list[1]
+    if sorted_list[0][1] < sorted_list[1][1]:
+        return sorted_list[0], sorted_list[1]
+    else:
+        return sorted_list[1], sorted_list[0]
 
 def find_first_local_speed_maximum(df):
     indices_of_local_maxima = argrelextrema(df['Speed [m/s]'].values, np.greater_equal, order=20)[0]
@@ -179,10 +188,9 @@ def process_single_file_double_jump(full_df):
         distance_of_eccentric_motion = df['Position [m]'].max() - df['Position [m]'].min()
         ((vmax_1, i_vmax_1, t_vmax_1), (vmax_2, i_vmax_2, t_vmax_2)) = find_two_lowest_local_speed_minima(df)
         # v_min between the two minima
-        print(repetition)
         index_vmin_1 = df.iloc[i_vmax_1:i_vmax_2]['Speed [m/s]'].idxmax()
-        vmin_1 = df.iloc[index_vmin_1]['Speed [m/s]']
-        t_vmin_1 = df.iloc[index_vmin_1]['time']
+        vmin_1 = df.loc[index_vmin_1]['Speed [m/s]']
+        t_vmin_1 = df.loc[index_vmin_1]['time']
         # landing phase of second hop
         df = df.iloc[i_vmax_2:]
         indices_v_x = get_indices_for_v_rel([0.75, 0.5, 0.25], df)
@@ -224,7 +232,7 @@ def process_single_file_double_jump(full_df):
             vmax_2,
             t_vmax_2,
             vmin_1,
-            t_vmin_1
+            t_vmin_1,
             )
         result_df = pd.concat([result_df, df_result])
     return result_df
