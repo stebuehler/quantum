@@ -12,4 +12,5 @@ dependencies:
     - pandas
     - plotly
     - scipy
+    - werkzeug
     - gunicorn
